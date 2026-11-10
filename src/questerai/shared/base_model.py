@@ -1,7 +1,10 @@
 """Declarative Base and common column mixins for all models."""
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
-from sqlalchemy import DateTime, Boolean, func
+import uuid
+import uuid6
+from sqlalchemy import DateTime, Boolean, func, Uuid
 from datetime import datetime
+
 
 class Base(DeclarativeBase):
     pass
@@ -14,4 +17,11 @@ class TimeBaseMixin:
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+class UUIDMixin:
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid6.uuid7,
+    )
     
