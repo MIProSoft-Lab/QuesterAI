@@ -1,0 +1,31 @@
+# QuesterAI Development Database
+# PostgreSQL 16 with pgvector extension for embedding storage.
+# Tables are managed by Alembic — init.sql only enables the vector extension.
+#
+# Usage:
+#   docker compose up -d        Start the database
+#   docker compose down         Stop the database (data persists in volume)
+#   docker compose down -v      Stop AND delete all data (fresh start)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: questerai_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: questerai_db
+      POSTGRES_USER: questerai
+      POSTGRES_PASSWORD: questerai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U questerai -d questerai_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
