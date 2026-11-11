@@ -1,6 +1,6 @@
 import uuid
 from typing import TYPE_CHECKING
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 from questerai.shared.base_model import Base, TimeBaseMixin, UUIDMixin
@@ -11,9 +11,12 @@ if TYPE_CHECKING:
 
 
 class QRecommendation(UUIDMixin, TimeBaseMixin, Base):
+    """AI-Recommended Questions generated before or during an interview."""
+
     __tablename__ = "q_recommendation"
+
     interview_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("interviews.id"),
+        ForeignKey("interview.id"),
         nullable=False,
     )
     # The previous turn that triggered this recommendation (nullable for initial turn 0 recommendations)
@@ -26,9 +29,9 @@ class QRecommendation(UUIDMixin, TimeBaseMixin, Base):
     type: Mapped[str] = mapped_column(String(50), default="discover", nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Relationships
-    interview: Mapped["interview"] = relationship(back_populates="recommendations")
-    source_qa: Mapped["qa | None"] = relationship(
+    # Relationships (singular for single parent)
+    interview: Mapped["Interview"] = relationship(back_populates="recommendations")
+    source_qa: Mapped["QA | None"] = relationship(
         back_populates="generated_recommendations",
         foreign_keys=[source_qa_id],
     )
@@ -40,12 +43,12 @@ class QA(UUIDMixin, TimeBaseMixin, Base):
     __tablename__ = "qa"
 
     interview_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("interviews.id"),
+        ForeignKey("interview.id"),
         nullable=False,
     )
     # Traceability to the AI recommendation chosen by the RE (0..1)
     selected_recommendation_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("q_recommendations.id"),
+        ForeignKey("q_recommendation.id"),
         nullable=True,
     )
 
@@ -55,17 +58,17 @@ class QA(UUIDMixin, TimeBaseMixin, Base):
     a_embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     type: Mapped[str] = mapped_column(String(50), default="open", nullable=False)
 
-    # Relationships
-    interview: Mapped["interview"] = relationship(back_populates="qas")
-    selected_recommendation: Mapped[QRecommendation | None] = relationship(
+    # Relationships (singular for one, plural for many)
+    interview: Mapped["Interview"] = relationship(back_populates="qas")
+    selected_recommendation: Mapped["QRecommendation | None"] = relationship(
         foreign_keys=[selected_recommendation_id],
     )
-    generated_recommendations: Mapped[list[QRecommendation]] = relationship(
+    generated_recommendations: Mapped[list["QRecommendation"]] = relationship(
         back_populates="source_qa",
         foreign_keys="[QRecommendation.source_qa_id]",
         cascade="all, delete-orphan",
     )
-    qa_requirements: Mapped[list["qa_requirement"]] = relationship(
+    qa_requirements: Mapped[list["QARequirement"]] = relationship(
         back_populates="qa",
         cascade="all, delete-orphan",
     )
